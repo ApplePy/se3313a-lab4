@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Lab 4</string>
+
+    <string name="drawer_open">Open navigation drawer</string>
+    <string name="drawer_close">Close navigation drawer</string>
+    <string name="action_websearch">Web search</string>
+    <string name="app_not_available">Sorry, there\'s no web browser available</string>
+    <string name="title_activity_login">Sign in</string>
+    <string name="title_activity_room">Chat room</string>
+
+    <!-- Strings related to login -->
+
+    <string name="action_sign_in">Sign in</string>
+
+    <string name="error_field_required">This field is required</string>
+    <string name="error_invalid_username">This username is invalid</string>
+    <string name="error_invalid_server">This server address is invalid</string>
+    <string name="error_invalid_port">This port is invalid, pick a number between 1 and 65536</string>
+
+    <string name="prompt_username">Username</string>
+    <string name="prompt_server_address">Server IP Address/Hostname</string>
+
+    <string name="default_server_address">10.0.2.2</string>
+    <string name="default_port">9001</string>
+    <string name="default_username">jsmith2</string>
+
+</resources>

@@ -1,0 +1,140 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="ca.uwo.eng.se3313.lab4.RoomFragment"
+    android:id="@+id/room_root">
+
+    <!-- TODO: Update blank fragment layout -->
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="5"
+            android:layout_gravity="center_vertical|fill_horizontal">
+
+            <TableLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/messageTable"
+                android:orientation="vertical"
+                android:shrinkColumns="1">
+
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="4dp"
+                    android:layout_margin="4dp">
+
+                    <TextView
+                        android:text="2014-11-01 12:03:33"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="@integer/msgs_date_weight"
+                        android:layout_column="@integer/msgs_date_column"
+                        android:maxLines="1"
+                        android:ellipsize="none" />
+
+                    <ImageView
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        app:srcCompat="@android:drawable/ic_input_add"
+                        android:id="@+id/imageView"
+                        android:layout_gravity="left|center_vertical"
+                        android:layout_weight="@integer/msgs_join_icon_weight" />
+
+                    <TextView
+                        android:text="Kevin"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="7"
+                        android:layout_column="1"
+                        android:maxLines="1"/>
+
+                </TableRow>
+
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="4dp"
+                    android:layout_margin="4dp">
+
+                    <TextView
+                        android:text="2014-11-01 12:03:33"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:layout_column="0"
+                        android:maxLines="1"
+                        android:ellipsize="none" />
+
+                    <TextView
+                        android:text="Kevin"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="8"
+                        android:layout_column="1"
+                        android:maxLines="1"
+                        android:layout_span="2" />
+
+                </TableRow>
+
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="4dp"
+                    android:layout_margin="4dp">
+
+                    <TextView
+                        android:text="Hello friends! Here is some longer text that should wrap eventually"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:maxLines="100"
+                        android:layout_column="0"
+                        android:layout_span="2"
+                        android:ellipsize="none"
+                        android:scrollHorizontally="false" />
+
+                </TableRow>
+
+
+            </TableLayout>
+        </ScrollView>
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="bottom|center">
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:inputType="text|textPersonName"
+                android:ems="10"
+                android:id="@+id/editMessage"
+                android:gravity="top|fill_vertical|fill_horizontal"
+                android:layout_weight="4"
+                android:hint="Enter a new message..."
+                android:maxLines="0" />
+
+            <ImageButton
+                android:layout_width="wrap_content"
+                app:srcCompat="@android:drawable/ic_menu_send"
+                android:id="@+id/sendMsgButton"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical|center_horizontal" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

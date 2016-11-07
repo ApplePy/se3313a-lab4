@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+
+    <integer name="prompt_server_port">9001</integer>
+
+
+    <integer name="msgs_content_column">0</integer>
+    <integer name="msgs_date_column">0</integer>
+    <integer name="msgs_name_column">1</integer>
+
+    <integer name="msgs_content_maxlines">20</integer>
+    <integer name="msgs_date_weight">2</integer>
+    <integer name="msgs_name_weight">8</integer>
+
+
+    <integer name="msgs_join_icon_weight">1</integer>
+
+</resources>
