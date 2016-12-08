@@ -1,8 +1,8 @@
 
 
 
-#ifndef JSMITH2_SERVER_HPP
-#define JSMITH2_SERVER_HPP
+#ifndef DMURRA47_SERVER_HPP
+#define DMURRA47_SERVER_HPP
 
 
 #include <msg/instance.hpp>
@@ -32,7 +32,7 @@
 
 
 
-namespace jsmith2 
+namespace dmurra47 
 {
     
     
@@ -77,4 +77,4 @@ private:
 
 } // end namespace
 
-#endif // JSMITH2_SERVER_HPP
+#endif // DMURRA47_SERVER_HPP
