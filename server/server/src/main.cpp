@@ -21,7 +21,7 @@ int main(int /*argc*/, char** /*argv*/)
   //Start console for "exit" command
   std::string inputText;
   do {
-    std::cout >> "> ";
+    std::cout << "> ";
     std::cin >> inputText;
   } while (inputText != "exit");
   
