@@ -55,7 +55,7 @@ void server::stop()
     
     // Close all sockets
     for (auto sock : sockets) {
-      sock->close();
+      sock.first->close();
     }
     sockets.empty();
     server_socket->close();
@@ -104,7 +104,7 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
     // Find socket in client socket array that closed; remove it and break
     for (auto iter = sockets.begin(); iter != sockets.end(); iter++)
     {
-      if (socket->fd() == (*iter)->fd())
+      if (socket->fd() == (*iter).first->fd())
       {
 	waiter->removeSocket(socket);
 	sockets.erase(iter);
@@ -128,7 +128,9 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
     
     
     // Get type of request and type of message HAX HAX HAX
+    response->toJson();
     msg::response::error* x = dynamic_cast<msg::response::error*>(response.get());
+    msg::response::login* y = dynamic_cast<msg::response::login*>(response.get());
     
     
     // If error, send message back to socket
@@ -143,6 +145,16 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
     // If no error, send message to everyone
     else
     {
+      // This is a login, associate with this socket
+      if (y != nullptr)
+      {
+	for(auto& cliSocket : sockets)
+	{
+	  if(socket->fd() == cliSocket.first->fd())
+	    cliSocket.second = y->joiningUsername();
+	}
+      }
+      
       std::lock_guard<std::mutex> lock(messageQueueLock);
       messageQueue.push_back(response);
     }
@@ -155,11 +167,10 @@ void server::onSocketServer(const std::shared_ptr<se3313::networking::socket_ser
   auto newClient = serverSocket->accept();
   
   // Save new client
-  sockets.push_back(newClient);
+  sockets.push_back(std::pair<std::shared_ptr<net::socket>, std::string>(newClient, std::string()));
   
   // Save client to flex_waiter
   waiter->addSocket(newClient);
-
 }
 
 void server::sendMessages()
@@ -183,7 +194,7 @@ void server::sendMessages()
 	// Write message to all sockets
 	for (auto socket: sockets)
 	{
-	  socket->write(responseSerialized);
+	  socket.first->write(responseSerialized);
 	}
       }
       
@@ -200,9 +211,9 @@ server::return_t server::visitLogin(const msg::request::login& login/* request *
   // Check to make sure username is not in use
   bool not_in_use = true;
   
-  for (auto username : usernames)
+  for (auto socket : sockets)
   {
-    if (login.sender() == username)
+    if (login.sender() == socket.second)
     {
       not_in_use = false;
       break;
@@ -212,7 +223,6 @@ server::return_t server::visitLogin(const msg::request::login& login/* request *
   // If username not in use, add it to the list and notify everyone
   if(not_in_use)
   {
-    usernames.push_back(login.sender());
     return std::shared_ptr<msg::response::login>(new msg::response::login(login.sender()));
   }
   else

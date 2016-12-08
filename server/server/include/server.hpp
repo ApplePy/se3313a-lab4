@@ -52,10 +52,10 @@ private:
     
     std::shared_ptr<flex_waiter> waiter;				// Holds all the sockets
     bool killed;							// Holds whether or not server.stop() was called.
-    std::vector<std::shared_ptr<socket>> sockets;			// The client sockets
+    std::vector<std::pair<std::shared_ptr<socket>,std::string>> sockets;// The client sockets and associated usernames
     std::shared_ptr<socket_server> server_socket;			// The server socket
     
-    std::vector<std::string> usernames;					// Holds the usernames
+    //std::vector<std::string> usernames;				// Holds the usernames
     
     std::vector<std::shared_ptr<se3313::msg::instance>> messageQueue;	// Holds the messages to be sent to all clients.
     std::mutex messageQueueLock;					// MessageQueue lock
