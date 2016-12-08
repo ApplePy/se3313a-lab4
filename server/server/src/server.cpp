@@ -98,13 +98,11 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
   
   // If socket closed
   if(bytes_read == 0)
-  {
-    // TODO: Deregister username
-    
+  {    
     // Find socket in client socket array that closed; remove it and break
     for (auto iter = sockets.begin(); iter != sockets.end(); iter++)
     {
-      if (socket->fd() == (*iter).first->fd())
+      if (socket->fd() == iter->first->fd())
       {
 	waiter->removeSocket(socket);
 	sockets.erase(iter);
@@ -128,13 +126,14 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
     
     
     // Get type of request and type of message HAX HAX HAX
-    response->toJson();
+    std::string type = response->toJson().get<std::string>(response->PROPERTY_TYPE);
     msg::response::error* x = dynamic_cast<msg::response::error*>(response.get());
     msg::response::login* y = dynamic_cast<msg::response::login*>(response.get());
+    std::cout << type << std::endl;
     
     
     // If error, send message back to socket
-    if (x != nullptr)
+    if (type == msg::response::error::TYPE)
     {
       // Convert message to string
       const std::string responseSerialized = msg::json::to(response->toJson());
@@ -146,7 +145,7 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
     else
     {
       // This is a login, associate with this socket
-      if (y != nullptr)
+      if (type == msg::response::login::TYPE)
       {
 	for(auto& cliSocket : sockets)
 	{
@@ -175,7 +174,7 @@ void server::onSocketServer(const std::shared_ptr<se3313::networking::socket_ser
 
 void server::sendMessages()
 {
-  std::cout << "sendMessages start" << std::endl;
+  // Continually check the send messages queue until the program quits
   while(!killed)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));	// Slow this thread down a bit to stop the cout pollution
