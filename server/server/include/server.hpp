@@ -33,8 +33,6 @@
 
 namespace dmurra47 
 {
-    
-    // TODO: Check abstract_message_visitor template
 class server final:
 public se3313::networking::flex_waiter::activity_visitor,
   public se3313::msg::request::abstract_message_visitor<>,
@@ -52,10 +50,15 @@ private:
     
     const port_t _serverPort;
     
-    std::shared_ptr<flex_waiter> waiter;	// Holds all the sockets
-    bool killed;				// Holds whether or not server.stop() was called.
-    std::vector<std::shared_ptr<socket>> sockets;
-    std::shared_ptr<socket_server> server_socket;
+    std::shared_ptr<flex_waiter> waiter;				// Holds all the sockets
+    bool killed;							// Holds whether or not server.stop() was called.
+    std::vector<std::shared_ptr<socket>> sockets;			// The client sockets
+    std::shared_ptr<socket_server> server_socket;			// The server socket
+    
+    std::vector<std::string> usernames;					// Holds the usernames
+    
+    std::vector<std::shared_ptr<se3313::msg::instance>> messageQueue;	// Holds the messages to be sent to all clients.
+    std::mutex messageQueueLock;					// MessageQueue lock
     
 public:
 
@@ -86,6 +89,17 @@ private:
   virtual void onSTDIN(const std::string& line);
   virtual void onSocket(const se3313::networking::flex_waiter::socket_ptr_t );
   virtual void onSocketServer(const std::shared_ptr<se3313::networking::socket_server>);
+  
+  virtual void sendMessages();
+  
+  /// Called when a login message is passed
+  virtual return_t visitLogin(const se3313::msg::request::login& /* request */ );
+
+  /// Called when a message is passed
+  virtual return_t visitMessage(const se3313::msg::request::message& /* request */ );
+    
+  /// Called when an error occurs
+  //virtual return_t error(const std::string& /*originator*/,const se3313::msg::ErrorCode /*code*/, const std::string& /*message*/);
 
 };
 
