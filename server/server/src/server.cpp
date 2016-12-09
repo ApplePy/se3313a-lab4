@@ -125,11 +125,8 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
     boost::property_tree::write_json(std::cout, response->toJson(), true);	// DEBUG
     
     
-    // Get type of request and type of message HAX HAX HAX
+    // Get type of request and type of message
     std::string type = response->toJson().get<std::string>(response->PROPERTY_TYPE);
-    msg::response::error* x = dynamic_cast<msg::response::error*>(response.get());
-    msg::response::login* y = dynamic_cast<msg::response::login*>(response.get());
-    std::cout << type << std::endl;
     
     
     // If error, send message back to socket
@@ -147,10 +144,14 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
       // This is a login, associate with this socket
       if (type == msg::response::login::TYPE)
       {
+	std::string username = response->toJson().get<std::string>("object.joiningUsername");
+	
 	for(auto& cliSocket : sockets)
 	{
 	  if(socket->fd() == cliSocket.first->fd())
-	    cliSocket.second = y->joiningUsername();
+	  {
+	    cliSocket.second = username;
+	  }
 	}
       }
       
