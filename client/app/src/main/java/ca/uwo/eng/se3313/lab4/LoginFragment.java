@@ -7,13 +7,16 @@ import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 
 import java.util.regex.Pattern;
 
@@ -47,11 +50,45 @@ public class LoginFragment extends Fragment {
 
     // TODO SE3313
     // Add any fields you want for state below this
+    private String address;
+    private int port;
+    private String username;
+
+    private TextView address_field;
+    private TextView port_field;
+    private TextView username_field;
 
 
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         this.mLoginFormView = view.findViewById(R.id.login_form);
+
+        // Get view references
+        this.address_field = (TextView) view.findViewById(R.id.address);
+        this.port_field = (TextView) view.findViewById(R.id.port);
+        this.username_field = (TextView) view.findViewById(R.id.username);
+
+        // Set default text
+        this.address_field.setText(R.string.default_server_address);
+        this.port_field.setText(R.string.default_port);
+        this.username_field.setText(R.string.default_username);
+
+        this.address_field.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                this.address_field = s.toString()
+            }
+        });
 
         // TODO SE3313 Set up your view references and interactions.
         // Default the fields to the strings default_* (e.g. R.string.default_username)
