@@ -9,6 +9,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -46,61 +47,42 @@ public class SocketManager implements INetworkingConnection {
         visitor = visit;
     }
 
-    /** Socket maker for SocketManager. Uses string hostname instead.
-     *
-     * @param host      The host to connect to.
-     * @param port      The host port to connect to.
-     */
-    public void open(String host, int port) {
-
-        // Start lookup
-        new AsyncTask<Void, Void, InetAddress>() {
-            @Override
-            protected InetAddress doInBackground(Void... params) {
-                try {
-                    return InetAddress.getByName(host);
-                } catch (UnknownHostException e) {
-                    return null;
-                }
-            }
-
-            @Override
-            protected void onPostExecute(@Nullable InetAddress inetAddress) {
-                if (inetAddress == null) {
-                    Log.e("SocketManager", "Unknown host.");
-                } else {
-                    // TODO: What to do when the socket doesn't open???
-                    open(inetAddress, port);
-                }
-            }
-        }.execute();
-    }
-
     /** Socket constructor for SocketManager. Creates socket and starts long-running thread for
      * receiving data.
      *
-     * @param host The InetAddress of the remote server.
+     * @param host The address of the remote server.
      * @param port The port for the remote server.
      */
-    public void open(InetAddress host, int port) {
+    public void open(String host, int port, OnErrorSend errCb) {
 
         // Don't mess with an already-open socket or a closing SocketManager.
-        if (sock.isConnected() || kill)
+        if (sock.isConnected() || kill) {
+            Log.w("SocketManager", "Socket already running.");
             return;
+        }
 
-        // TODO: What to do when the socket doesn't open???
-
+        Log.d("SocketManager", "Create thread.");
         // Thread for reading input from socket
         readThread = new Thread() {
             public void run() {
                 try {
+                    Log.d("SocketManager", "Thread waiting to start.");
                     while (!sock.isConnected());    // BUSY WAIT! BAD! TODO: Fix busy-wait
 
+                    Log.d("SocketManager", "Thread beginning processing.");
                     // Get input from server, and visit
                     BufferedInputStream bufIn = new BufferedInputStream(sock.getInputStream());
                     while (!kill) {
                         // Visit contents
-                        visitor.visit(bufIn.toString());
+                        byte[] contentBuffer = new byte[2048];
+                        String content = "";
+                        int read;
+                        while ((read = bufIn.read(contentBuffer)) != -1) {
+                            content += new String(contentBuffer, 0, read);
+                        }
+
+                        Log.d("SocketManager", "bufContents: " + content);
+                        visitor.visit(content);
                     }
                 } catch (IOException e) {
                     // Respawn
@@ -110,15 +92,21 @@ public class SocketManager implements INetworkingConnection {
         };
 
         // AsyncTask for getting socket open.
-        new AsyncTask<Void, Void, Socket>() {
+        AsyncTask<Void, Void, Socket> task = new AsyncTask<Void, Void, Socket>() {
             IOException except = null;
 
             @Override
             protected Socket doInBackground(Void... params) {
+                Log.d("SocketManager", "doInBackground start");
                 try
                 {
-                    Socket sock = new Socket(host, port);
+                    Log.d("SocketManager", "Resolving host.");
+                    InetAddress ihost = InetAddress.getByName(host);
+
+                    Log.d("SocketManager", "Starting socket connection.");
+                    sock.connect(new InetSocketAddress(ihost, port), 2000); // 2000ms to connect or fails
                     sock.setSoTimeout(5000);    // 5000ms timeout on reads
+
                     return sock;
                 } catch (IOException e) {
                     except = e;
@@ -130,14 +118,18 @@ public class SocketManager implements INetworkingConnection {
             protected void onPostExecute(@Nullable Socket openSock) {
                 if (openSock == null){
                     Log.e("SocketManager", "Open socket failed.");
-                    // TODO: Handle error here
+                    // TODO: Why does this AsyncTask not run anymore after a failure?
+                    errCb.onError(except);
                 } else {
+                    Log.d("SocketManager", "Open socket success.");
                     // Setup thread and start reader.
-                    sock = openSock;
                     readThread.start();
                 }
             }
-        }.execute();
+        };
+
+        Log.d("SocketManager", "ExecuteTask");
+        task.execute();
     }
 
 
@@ -169,6 +161,8 @@ public class SocketManager implements INetworkingConnection {
             @Override
             protected T doInBackground(T... params) {
                 try {
+                    while (!sock.isConnected()); // BUSY WAIT! BAD! TODO: Fix busy-wait.
+
                     // Get output stream
                     OutputStream out = sock.getOutputStream();
 

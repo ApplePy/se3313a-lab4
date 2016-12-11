@@ -7,10 +7,13 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.widget.TextView;
 
 import com.google.common.base.Function;
 
 import org.joda.time.DateTime;
+
+import java.io.IOException;
 
 import ca.uwo.eng.se3313.lab4.network.INetworkingConnection;
 import ca.uwo.eng.se3313.lab4.network.MyResponseVisitor;
@@ -78,9 +81,19 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void login(LoginRequest req) {
-        // TODO: Finish errorHandler
-        mConnection.send(req, null, (INetworkingConnection connection, @NonNull LoginRequest message)-> {
+    public void login(LoginRequest req, String host, int port, TextView errorText) {
+        // Open socket.
+        ((SocketManager)mConnection).open(host, port, (Throwable e) -> errorText.setText(e.getMessage()));
+
+        // Send login message; show error and close socket if failure happens. Otherwise transition to chat room.
+        mConnection.send(req, (Throwable e) -> {
+            errorText.setText(e.getMessage());
+            try {
+                mConnection.close();
+            } catch(Exception e2) {
+                errorText.setText(e2.getMessage());
+            }
+        }, (INetworkingConnection connection, @NonNull LoginRequest message)-> {
             loggedIn = true;
             showRoomFragment();
         });

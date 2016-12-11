@@ -16,7 +16,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import org.w3c.dom.Text;
 
 import java.util.regex.Pattern;
 
@@ -58,6 +62,8 @@ public class LoginFragment extends Fragment {
     private TextView address_field;
     private TextView port_field;
     private TextView username_field;
+    private ProgressBar progress_view;
+    private TextView error_text;
     private Button signin_button;
 
 
@@ -69,59 +75,85 @@ public class LoginFragment extends Fragment {
         address_field = (TextView) view.findViewById(R.id.address);
         port_field = (TextView) view.findViewById(R.id.port);
         username_field = (TextView) view.findViewById(R.id.username);
+        progress_view = (ProgressBar) view.findViewById(R.id.login_progress);
+        error_text = (TextView) view.findViewById(R.id.error_text);
         signin_button = (Button) view.findViewById(R.id.sign_in_button);
 
         // Set default text
         address_field.setText(R.string.default_server_address);
+        address = getText(R.string.default_server_address).toString();
         port_field.setText(R.string.default_port);
+        port = Integer.parseInt(getText(R.string.default_port).toString());
         username_field.setText(R.string.default_username);
+        username = getText(R.string.default_username).toString();
 
         // Set the changed listeners so that local variables are always kept up to date
         address_field.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                Log.d("ListenerAddress", s.toString());
+                address = s.toString();
+            }
 
             @Override
-            public void afterTextChanged(Editable s) {address = s.toString();}
+            public void afterTextChanged(Editable s) {}
         });
 
         port_field.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // Don't let illegal values happen!
+                // TODO: Handle situation where the text becomes empty better.
+                if(s.length() == 0) {
+                    s = "1";
+                }
+                Log.d("ListenerPort", s.toString());
+                port = Integer.parseInt(s.toString());
+            }
 
             @Override
-            public void afterTextChanged(Editable s) {port = Integer.parseInt(s.toString());}
+            public void afterTextChanged(Editable s) {}
         });
 
         username_field.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                Log.d("ListenerUsername", s.toString());
+                username = s.toString();
+            }
 
             @Override
-            public void afterTextChanged(Editable s) {username = s.toString();}
+            public void afterTextChanged(Editable s) {}
         });
 
         signin_button.setOnClickListener((View v) -> {
+            Log.d("LoginFragment", address);
+            Log.d("LoginFragment", Integer.toString(port));
+            Log.d("LoginFragment", username);
+
             // Validate information
             if (isValidHostname(address_field.getText().toString()) &&
                     username.length() > 2 &&
                     port > 0 && port <= 65535) {
+                // Wipe old error messages
+                error_text.setText("");
 
                 // Create login request
                 Log.d("Login: ", "Valid");
                 LoginRequest loginObj = new LoginRequest(username);
 
                 // Start login
-                mListener.login(loginObj);
+                mListener.login(loginObj, address, port, error_text);
 
             } else {
                 Log.d("Login: ", "Invalid");
+                error_text.setText("Invalid host, port, or username.");
             }
         });
     }
@@ -137,6 +169,7 @@ public class LoginFragment extends Fragment {
         address_field = null;
         port_field = null;
         username_field = null;
+        progress_view = null;
     }
 
 
@@ -151,7 +184,7 @@ public class LoginFragment extends Fragment {
     public interface OnInteractionListener {
 
        // TODO SE3313 Add any interactions you expect the MainActivity to have
-        void login(LoginRequest req);
+        void login(LoginRequest req, String host, int port, TextView errors);
 
     }
 
