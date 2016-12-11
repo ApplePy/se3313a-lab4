@@ -13,6 +13,9 @@ import com.google.common.base.Function;
 import org.joda.time.DateTime;
 
 import ca.uwo.eng.se3313.lab4.network.INetworkingConnection;
+import ca.uwo.eng.se3313.lab4.network.MyResponseVisitor;
+import ca.uwo.eng.se3313.lab4.network.SocketManager;
+import ca.uwo.eng.se3313.lab4.network.request.LoginRequest;
 import ca.uwo.eng.se3313.lab4.network.request.MessageRequest;
 import ca.uwo.eng.se3313.lab4.network.response.LoginResponse;
 import ca.uwo.eng.se3313.lab4.network.response.MessageResponse;
@@ -71,6 +74,16 @@ public class MainActivity extends AppCompatActivity
         // there is no UI shown, yet, thus can not be accessed. All of the UI components are stored
         // in Fragments.
 
+        mConnection = new SocketManager(new MyResponseVisitor());
+    }
+
+    @Override
+    public void login(LoginRequest req) {
+        // TODO: Finish errorHandler
+        mConnection.send(req, null, (INetworkingConnection connection, @NonNull LoginRequest message)-> {
+            loggedIn = true;
+            showRoomFragment();
+        });
     }
 
     // ------ DO NOT MODIFY BELOW ------

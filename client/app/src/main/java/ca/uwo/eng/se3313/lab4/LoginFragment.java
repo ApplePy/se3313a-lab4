@@ -21,6 +21,7 @@ import android.widget.TextView;
 import java.util.regex.Pattern;
 
 import ca.uwo.eng.se3313.lab4.network.INetworkingConnection;
+import ca.uwo.eng.se3313.lab4.network.SocketManager;
 import ca.uwo.eng.se3313.lab4.network.request.LoginRequest;
 import ca.uwo.eng.se3313.lab4.network.response.ResponseVisitor;
 
@@ -117,6 +118,7 @@ public class LoginFragment extends Fragment {
                 LoginRequest loginObj = new LoginRequest(username);
 
                 // Start login
+                mListener.login(loginObj);
 
             } else {
                 Log.d("Login: ", "Invalid");
@@ -149,6 +151,7 @@ public class LoginFragment extends Fragment {
     public interface OnInteractionListener {
 
        // TODO SE3313 Add any interactions you expect the MainActivity to have
+        void login(LoginRequest req);
 
     }
 
