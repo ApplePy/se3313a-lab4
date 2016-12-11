@@ -57,6 +57,7 @@ public class LoginFragment extends Fragment {
     private TextView address_field;
     private TextView port_field;
     private TextView username_field;
+    private Button signin_button;
 
 
     @Override
@@ -64,34 +65,63 @@ public class LoginFragment extends Fragment {
         this.mLoginFormView = view.findViewById(R.id.login_form);
 
         // Get view references
-        this.address_field = (TextView) view.findViewById(R.id.address);
-        this.port_field = (TextView) view.findViewById(R.id.port);
-        this.username_field = (TextView) view.findViewById(R.id.username);
+        address_field = (TextView) view.findViewById(R.id.address);
+        port_field = (TextView) view.findViewById(R.id.port);
+        username_field = (TextView) view.findViewById(R.id.username);
+        signin_button = (Button) view.findViewById(R.id.sign_in_button);
 
         // Set default text
-        this.address_field.setText(R.string.default_server_address);
-        this.port_field.setText(R.string.default_port);
-        this.username_field.setText(R.string.default_username);
+        address_field.setText(R.string.default_server_address);
+        port_field.setText(R.string.default_port);
+        username_field.setText(R.string.default_username);
 
-        this.address_field.addTextChangedListener(new TextWatcher() {
+        // Set the changed listeners so that local variables are always kept up to date
+        address_field.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-            }
-
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-            }
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
 
             @Override
-            public void afterTextChanged(Editable s) {
-                this.address_field = s.toString()
-            }
+            public void afterTextChanged(Editable s) {address = s.toString();}
         });
 
-        // TODO SE3313 Set up your view references and interactions.
-        // Default the fields to the strings default_* (e.g. R.string.default_username)
+        port_field.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {port = Integer.parseInt(s.toString());}
+        });
+
+        username_field.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {username = s.toString();}
+        });
+
+        signin_button.setOnClickListener((View v) -> {
+            // Validate information
+            if (isValidHostname(address_field.getText().toString()) &&
+                    username.length() > 2 &&
+                    port > 0 && port <= 65535) {
+
+                // Create login request
+                Log.d("Login: ", "Valid");
+                LoginRequest loginObj = new LoginRequest(username);
+
+                // Start login
+
+            } else {
+                Log.d("Login: ", "Invalid");
+            }
+        });
     }
 
     @Override
@@ -101,8 +131,14 @@ public class LoginFragment extends Fragment {
         mLoginFormView.animate().cancel();
         this.mLoginFormView = null;
 
-        // TODO SE3313 Set all of your view references to null here
+        // SE3313 Set all of your view references to null here
+        address_field = null;
+        port_field = null;
+        username_field = null;
     }
+
+
+
 
     /**
      * This interface must be implemented by activities that contain this

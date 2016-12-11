@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity
 
     // TODO SE3313A
     // Insert any state here:
+    private boolean loggedIn = false;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
