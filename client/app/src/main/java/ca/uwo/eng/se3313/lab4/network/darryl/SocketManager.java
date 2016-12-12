@@ -12,6 +12,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.concurrent.locks.ReentrantLock;
 
 import ca.uwo.eng.se3313.lab4.network.INetworkInstance;
 import ca.uwo.eng.se3313.lab4.network.INetworkingConnection;
@@ -37,6 +38,10 @@ public class SocketManager implements INetworkingConnection {
      */
     private ResponseThread readThread;
 
+    /** Socket lock for sending
+     */
+    private ReentrantLock lock = new ReentrantLock();
+
 
     /** Constructor for SocketManager.
      *
@@ -59,6 +64,7 @@ public class SocketManager implements INetworkingConnection {
                     readThread = new ResponseThread(sock, visitor, (Throwable e) -> {
                         // TODO: Do something if a socket falls apart. #send expects the socket to work.
                         // This is just a stop-gap.
+                        Log.d("SocketManager", "Connection lost.");
                         connectionLost.onError(e);
                     });
                     readThread.start();
@@ -104,6 +110,7 @@ public class SocketManager implements INetworkingConnection {
             @Override
             protected T doInBackground(T... params) {
                 try {
+                    lock.lock();
                     // Get output stream
                     OutputStream out = sock.getOutputStream();
 
@@ -114,8 +121,11 @@ public class SocketManager implements INetworkingConnection {
                     success = true;
                     return params[0];
                 } catch (IOException e) {
+                    success = false;
                     except = e;
                     return null;
+                } finally {
+                    lock.unlock();
                 }
             }
 

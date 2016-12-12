@@ -155,6 +155,7 @@ public class MainActivity extends AppCompatActivity
                         // Login went well
                         if (expectingLogin) {
                             loggedIn = true;
+                            expectingLogin = false;
                             showRoomFragment();
                         }
                         Log.d("Login", "Hey, we got a login message!");
@@ -164,19 +165,21 @@ public class MainActivity extends AppCompatActivity
                             mRoomFragment.createUserLoginWrapper((DateTime) ((Object[]) inputMessage.obj)[0], (String) ((Object[]) inputMessage.obj)[1]);
                         } else {
                             // Room not ready, stall!
-                            new AsyncTask<Void, Void, Void>() {
+                            new AsyncTask<Object, Void, Void>() {
                                 @Override
-                                protected Void doInBackground(Void... params) {
+                                protected Void doInBackground(Object... params) {
+                                    Log.d("LoginAsync", "Sleeping...");
                                     try {
-                                        Thread.sleep(500);  // Sleep 500ms and then try again
+                                        Thread.sleep(1000);  // Sleep 500ms and then try again
                                     } catch (InterruptedException e) {
                                         // Ignore error
                                     }
                                     // Resend message.
-                                    appHandler.sendMessage(Message.obtain(appHandler, inputMessage.what, inputMessage.obj));
+                                    Log.d("LoginAsync", "Resend.");
+                                    appHandler.sendMessage(Message.obtain(appHandler, DisplayLogin, params[0]));
                                     return null;
                                 }
-                            }.execute();
+                            }.execute(inputMessage.obj);
                         }
                         break;
                     }

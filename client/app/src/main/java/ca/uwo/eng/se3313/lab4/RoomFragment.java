@@ -64,17 +64,28 @@ public class RoomFragment extends Fragment {
         send.setOnClickListener((View v) -> {
             Handler appHandler = ((MainActivity)getContext()).getAppHandler();
             appHandler.sendMessage(Message.obtain(appHandler, MainActivity.SendMessage, enterText.getText().toString()));
+
+            // Clear text
+            enterText.setText("");
         });
 
         mListener.onRoomReady();
     }
 
     public void createUserLoginWrapper(DateTime time, String username) {
-        createLoggedInElements(time, username);
+        if (isAdded()) {
+            createLoggedInElements(time, username);
+        } else {
+            Log.d("Login", "Not added!");
+        }
     }
 
     public void createMessageWrapper(DateTime time, String username, String message) {
-        createUserMessageElements(time, username, message);
+        if (isAdded()) {
+            createUserMessageElements(time, username, message);
+        } else {
+            Log.d("Message", "Not added!");
+        }
     }
 
 
