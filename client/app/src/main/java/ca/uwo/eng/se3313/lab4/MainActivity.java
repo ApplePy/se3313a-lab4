@@ -61,14 +61,6 @@ public class MainActivity extends AppCompatActivity
     private String username = "";
     private boolean roomReady = false;
 
-    public String getUsername() {
-        return username;
-    }
-
-    public Handler getAppHandler() {
-        return appHandler;
-    };
-
     // Handler codes
     public static final int SocketAWOL      = 9999;
     public static final int DisplayMessage  = 10000;
@@ -76,6 +68,14 @@ public class MainActivity extends AppCompatActivity
     public static final int DisplayLogin    = 10002;
     public static final int DisplayError    = 10003;
     public static final int ExpectingLogin  = 10004;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public Handler getAppHandler() {
+        return appHandler;
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -97,6 +97,7 @@ public class MainActivity extends AppCompatActivity
         // there is no UI shown, yet, thus can not be accessed. All of the UI components are stored
         // in Fragments.
 
+        // Set up main application event loop
         appHandler = new Handler(Looper.getMainLooper()) {
             boolean expectingLogin = false;
 
@@ -110,11 +111,13 @@ public class MainActivity extends AppCompatActivity
                     case SendMessage:
                     {
                         // Make message and send it, and display error if it can't be sent.
+                        // NOTE: Maybe move this to a separate function as part of OnInteractionListener?
                         MessageRequest msg = new MessageRequest(DateTime.now(), username, (String)inputMessage.obj);
                         mConnection.send(msg, (Throwable e) -> appHandler.sendMessage(Message.obtain(appHandler, DisplayError, e.getMessage())));
                         break;
                     }
                     case ExpectingLogin:
+                        // A login is expected, remember detail.
                         expectingLogin = true;
                         break;
                     case SocketAWOL:
@@ -129,6 +132,7 @@ public class MainActivity extends AppCompatActivity
                         trans.replace(R.id.fragment_root, LoginFragment.newInstance(savedInstanceState), LoginFragment.TAG);
                         trans.commit();
 
+                        // Close socket stuff
                         try {
                             mConnection.close();
                             mConnection = null;
@@ -152,25 +156,26 @@ public class MainActivity extends AppCompatActivity
                         break;
                     }
                     case DisplayLogin: {
-                        // Login went well
-                        if (expectingLogin) {
+                        // Login went well or if login success packet comes back before setting the ExpectingLogin message, handle
+                        if (expectingLogin || !loggedIn) {
                             loggedIn = true;
                             expectingLogin = false;
                             showRoomFragment();
                         }
-                        Log.d("Login", "Hey, we got a login message!");
 
+
+                        // If room is ready
                         if (roomReady) {
                             // Show login
                             mRoomFragment.createUserLoginWrapper((DateTime) ((Object[]) inputMessage.obj)[0], (String) ((Object[]) inputMessage.obj)[1]);
                         } else {
-                            // Room not ready, stall!
+                            // Room not ready, stall! HAX.
                             new AsyncTask<Object, Void, Void>() {
                                 @Override
                                 protected Void doInBackground(Object... params) {
                                     Log.d("LoginAsync", "Sleeping...");
                                     try {
-                                        Thread.sleep(1000);  // Sleep 500ms and then try again
+                                        Thread.sleep(500);  // Sleep 500ms and then try again
                                     } catch (InterruptedException e) {
                                         // Ignore error
                                     }
@@ -184,24 +189,27 @@ public class MainActivity extends AppCompatActivity
                         break;
                     }
                     case DisplayMessage:
+                        // If room is ready
                         if (roomReady) {
                             // Display message
                             mRoomFragment.createMessageWrapper((DateTime) ((Object[]) inputMessage.obj)[0], (String) ((Object[]) inputMessage.obj)[1], (String) ((Object[]) inputMessage.obj)[2]);
                         } else {
-                            // Room not ready, stall!
-                            new AsyncTask<Void, Void, Void>() {
+                            // Room not ready, stall! HAX.
+                            new AsyncTask<Object, Void, Void>() {
                                 @Override
-                                protected Void doInBackground(Void... params) {
+                                protected Void doInBackground(Object... params) {
+                                    Log.d("LoginAsync", "Sleeping...");
                                     try {
                                         Thread.sleep(500);  // Sleep 500ms and then try again
                                     } catch (InterruptedException e) {
                                         // Ignore error
                                     }
                                     // Resend message.
-                                    appHandler.sendMessage(Message.obtain(appHandler, inputMessage.what, inputMessage.obj));
+                                    Log.d("LoginAsync", "Resend.");
+                                    appHandler.sendMessage(Message.obtain(appHandler, DisplayMessage, params[0]));
                                     return null;
                                 }
-                            }.execute();
+                            }.execute(inputMessage.obj);
                         }
                         break;
                 }
@@ -209,6 +217,13 @@ public class MainActivity extends AppCompatActivity
         };
     }
 
+
+    /** Called when the user requests a login.
+     *
+     * @param req   The login request object.
+     * @param host  The host to login to.
+     * @param port  The port on the host to login to.
+     */
     @Override
     public void login(LoginRequest req, String host, int port) {
         // Callbacks
@@ -240,17 +255,15 @@ public class MainActivity extends AppCompatActivity
                         // If sending succeeds, wait for ResponseThread to publish results.
                         username = req.getSender();
 
-                        // Let Handler know to expect a login.
+                        // Let Handler know to expect a login. (Race condition covered in Handler)
                         appHandler.sendEmptyMessage(ExpectingLogin);
                     });
         });
-
-        // Send login message; show error and close socket if failure happens. Otherwise transition to chat room.
-
     }
 
     @Override
     public void onRoomReady() {
+        // Signal to handler that room is ready.
         roomReady = true;
     }
 

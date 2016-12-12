@@ -63,8 +63,9 @@ public class SocketManager implements INetworkingConnection {
                     // Start up listening thread
                     readThread = new ResponseThread(sock, visitor, (Throwable e) -> {
                         // TODO: Do something if a socket falls apart. #send expects the socket to work.
-                        // This is just a stop-gap.
                         Log.d("SocketManager", "Connection lost.");
+
+                        // This is just temporary.
                         connectionLost.onError(e);
                     });
                     readThread.start();
@@ -94,6 +95,7 @@ public class SocketManager implements INetworkingConnection {
 
     @Override
     public <T extends INetworkInstance> AsyncTask<T, ?, ?> send(@NonNull T message, @NonNull OnErrorSend errorHandler, @Nullable OnSuccessfulSend<T> successHandler) {
+        // Hax!
         INetworkingConnection myThis = this;
 
         // Sanity check - ensure socket is connected.
@@ -110,7 +112,9 @@ public class SocketManager implements INetworkingConnection {
             @Override
             protected T doInBackground(T... params) {
                 try {
+                    // Multiple sends could be happening simultaneously, only one at a time.
                     lock.lock();
+
                     // Get output stream
                     OutputStream out = sock.getOutputStream();
 
@@ -118,13 +122,16 @@ public class SocketManager implements INetworkingConnection {
                     out.write(params[0].toJson().toString().getBytes());
                     out.flush();
 
+                    // Signal success
                     success = true;
                     return params[0];
                 } catch (IOException e) {
+                    // Signal failure
                     success = false;
                     except = e;
                     return null;
                 } finally {
+                    // Let next write go.
                     lock.unlock();
                 }
             }
@@ -141,6 +148,7 @@ public class SocketManager implements INetworkingConnection {
             }
         };
 
+        // Execute the task before returning.
         return task.execute(message);
     }
 
@@ -152,6 +160,7 @@ public class SocketManager implements INetworkingConnection {
     @Override
     public void close() throws Exception {
         // Close up reading thread and the socket.
+        readThread.signalKill();
         readThread.join();
         sock.close();
     }

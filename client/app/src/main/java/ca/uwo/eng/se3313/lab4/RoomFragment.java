@@ -73,6 +73,7 @@ public class RoomFragment extends Fragment {
     }
 
     public void createUserLoginWrapper(DateTime time, String username) {
+        // Make sure Fragment is added before starting
         if (isAdded()) {
             createLoggedInElements(time, username);
         } else {
@@ -81,6 +82,7 @@ public class RoomFragment extends Fragment {
     }
 
     public void createMessageWrapper(DateTime time, String username, String message) {
+        // Make sure Fragment is added before starting
         if (isAdded()) {
             createUserMessageElements(time, username, message);
         } else {

@@ -26,6 +26,7 @@ public class ResponseThread extends Thread {
     private Socket sock;
     private ResponseVisitor visitor;
     private OnErrorSend error;
+    private boolean kill = false;
 
 
     /** ResponseThread Constructor
@@ -40,6 +41,13 @@ public class ResponseThread extends Thread {
     }
 
 
+    /** Signals the ResponseThread to stop reading the input stream.
+     *
+     */
+    public void signalKill() {
+        kill = true;
+    }
+
     /** The main function of the thread.
      *
      */
@@ -50,7 +58,7 @@ public class ResponseThread extends Thread {
             BufferedInputStream bufIn = new BufferedInputStream(sock.getInputStream());
 
             // Loop through input stream and get data
-            while (true) {
+            while (!kill) {
 
                 try {
                     // Extract content
@@ -67,22 +75,25 @@ public class ResponseThread extends Thread {
                         try {
                             visitor.visit(content);
                         }
-                        // A server error was thrown and the visitor thing didn't work.
+                        // A server error was returned and the visitor thing didn't work.
                         catch (IllegalStateException e) {
+
+                            // Extract info manually NOTE: can't parse DateTime properly
                             JsonObject result = GsonUtils.buildGson().fromJson(content, JsonObject.class);
                             String message = result.getAsJsonObject("object").get("message").getAsString();
                             //DateTime time = DateTime.parse(result.getAsJsonObject("object").get("datetime").getAsString());
                             int code = Integer.parseInt(result.getAsJsonObject("object").get("code").getAsString());
 
+                            // Call visitor manually.
                             visitor.visitError(new ServerError(DateTime.now(), code, message));
                         }
                     }
                 } catch (SocketTimeoutException e) {
-                    // Read timed out, don't worry about it.
+                    // Read timed out, nobody has messaged in a while. Don't worry about it.
                 }
             }
         } catch (Exception e) {
-            // Bad stuff happened. Tell someone!
+            // Bad stuff happened. Tell someone.
             Log.e("ReadThread", "Exeception thrown: " + e.getMessage());
             error.onError(e);
         }
