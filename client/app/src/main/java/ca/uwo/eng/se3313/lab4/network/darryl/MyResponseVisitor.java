@@ -1,7 +1,12 @@
-package ca.uwo.eng.se3313.lab4.network;
+package ca.uwo.eng.se3313.lab4.network.darryl;
 
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
+import android.util.Log;
 
+import ca.uwo.eng.se3313.lab4.MainActivity;
+import ca.uwo.eng.se3313.lab4.network.ErrorCode;
 import ca.uwo.eng.se3313.lab4.network.response.AbstractResponseVisitor;
 import ca.uwo.eng.se3313.lab4.network.response.LoginResponse;
 import ca.uwo.eng.se3313.lab4.network.response.MessageResponse;
@@ -12,6 +17,16 @@ import ca.uwo.eng.se3313.lab4.network.response.ServerError;
  */
 
 public class MyResponseVisitor extends AbstractResponseVisitor {
+    private Handler appHandler;
+
+    /** MyResponseVisitor constructor.
+     *
+     * @param app The app's handler loop to report actions to.
+     */
+    public MyResponseVisitor(Handler app) {
+        appHandler = app;
+    }
+
     /**
      * Called when a {@link LoginResponse} instance is recieved by {@link #visit(CharSequence)}.
      *
@@ -19,7 +34,7 @@ public class MyResponseVisitor extends AbstractResponseVisitor {
      */
     @Override
     public void visitLogin(@NonNull LoginResponse login) {
-
+        appHandler.sendMessage(Message.obtain(appHandler, MainActivity.DisplayLogin, login.getJoiningUsername()));
     }
 
     /**
@@ -29,7 +44,9 @@ public class MyResponseVisitor extends AbstractResponseVisitor {
      */
     @Override
     public void visitMessage(@NonNull MessageResponse message) {
+        //Message.ob
 
+        //appHandler.sendMessage(Message.obtain(appHandler, MainActivity.DisplayMessage, message.getContent(), message.getOriginator(), message.getDateTime()));
     }
 
     /**
@@ -39,7 +56,7 @@ public class MyResponseVisitor extends AbstractResponseVisitor {
      */
     @Override
     public void visitError(@NonNull ServerError error) {
-
+        appHandler.sendMessage(Message.obtain(appHandler, MainActivity.DisplayError, error.getMessage()));
     }
 
     /**

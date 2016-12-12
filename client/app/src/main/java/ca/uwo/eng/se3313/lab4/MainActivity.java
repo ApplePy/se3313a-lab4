@@ -1,6 +1,10 @@
 package ca.uwo.eng.se3313.lab4;
 
+import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentManager;
@@ -8,21 +12,15 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import com.google.common.base.Function;
-
-import org.joda.time.DateTime;
-
-import java.io.IOException;
+import java.net.Socket;
 
 import ca.uwo.eng.se3313.lab4.network.INetworkingConnection;
-import ca.uwo.eng.se3313.lab4.network.MyResponseVisitor;
-import ca.uwo.eng.se3313.lab4.network.SocketManager;
+import ca.uwo.eng.se3313.lab4.network.darryl.MyResponseVisitor;
+import ca.uwo.eng.se3313.lab4.network.darryl.SocketConnect;
+import ca.uwo.eng.se3313.lab4.network.darryl.SocketManager;
 import ca.uwo.eng.se3313.lab4.network.request.LoginRequest;
-import ca.uwo.eng.se3313.lab4.network.request.MessageRequest;
-import ca.uwo.eng.se3313.lab4.network.response.LoginResponse;
-import ca.uwo.eng.se3313.lab4.network.response.MessageResponse;
-import ca.uwo.eng.se3313.lab4.network.response.ResponseVisitor;
 
 /**
  * The main application activity. This utilizes multiple fragments to run, {@link LoginFragment} and
@@ -55,7 +53,15 @@ public class MainActivity extends AppCompatActivity
 
     // TODO SE3313A
     // Insert any state here:
-    private boolean loggedIn = false;
+    private Handler appHandler;
+    private boolean loggedIn = false;   // Only true when logged in and socket is connected.
+
+    // Handler codes
+    public static final int SocketAWOL      = 9999;
+    public static final int DisplayMessage  = 10000;
+    public static final int DisplayLogin    = 10001;
+    public static final int DisplayError    = 10002;
+    public static final int ExpectingLogin  = 10003;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -77,26 +83,114 @@ public class MainActivity extends AppCompatActivity
         // there is no UI shown, yet, thus can not be accessed. All of the UI components are stored
         // in Fragments.
 
-        mConnection = new SocketManager(new MyResponseVisitor());
+        appHandler = new Handler(Looper.getMainLooper()) {
+            boolean expectingLogin = false;
+
+            @Override
+            /**
+             * This method handles the custom messages generated in this application.
+             * @param inputMessage The message that is sent.
+             */
+            public void handleMessage(Message inputMessage) {
+                switch (inputMessage.what) {
+                    case ExpectingLogin:
+                        expectingLogin = true;
+                        break;
+                    case SocketAWOL:
+                        // Log user off, dismantle remaining socket infrastructure, and return to login.
+                        loggedIn = false;
+                        expectingLogin = false;
+
+                        // Change back to login fragment
+                        final FragmentTransaction trans = mFragmentManager.beginTransaction();
+                        trans.replace(R.id.fragment_root, LoginFragment.newInstance(savedInstanceState), LoginFragment.TAG);
+                        trans.commit();
+
+                        try {
+                            mConnection.close();
+                            mConnection = null;
+                        } catch (Exception e) {
+                            // TODO: Find something better than ignoring this.
+                        }
+                        break;
+                    case DisplayError:
+                        // Login went bad
+                        if (expectingLogin)
+                        {
+                            Context context = getApplicationContext();
+                            CharSequence text = (String) inputMessage.obj;
+                            int duration = Toast.LENGTH_SHORT;
+
+                            Toast toast = Toast.makeText(context, text, duration);
+                            toast.show();
+                            expectingLogin = false;
+                        } else {
+                            Context context = getApplicationContext();
+                            CharSequence text = (String) inputMessage.obj;
+                            int duration = Toast.LENGTH_SHORT;
+
+                            Toast toast = Toast.makeText(context, text, duration);
+                            toast.show();
+                        }
+                        break;
+                    case DisplayLogin:
+                        // Login went well
+                        if (expectingLogin) {
+                        loggedIn = true;
+                        showRoomFragment();
+                        } else {
+                            Context context = getApplicationContext();
+                            CharSequence text = (String) inputMessage.obj;
+                            int duration = Toast.LENGTH_SHORT;
+
+                            Toast toast = Toast.makeText(context, text, duration);
+                            toast.show();
+                        }
+                        break;
+                    case DisplayMessage:
+                        // TODO: Display message
+                        break;
+                }
+            }
+        };
     }
 
     @Override
-    public void login(LoginRequest req, String host, int port, TextView errorText) {
+    public void login(LoginRequest req, String host, int port) {
+        // Callbacks
+        SocketConnect.SocketConnectError errCb = (Throwable e) -> {
+            appHandler.sendMessage(Message.obtain(appHandler, DisplayError, e.getMessage()));
+        };
+        SocketConnect.SocketConnectError lostCb = (Throwable e) -> {
+            // Write results
+            appHandler.sendMessage(Message.obtain(appHandler, DisplayError, e.getMessage()));;
+
+            // Publish to handler that the socket has gone AWOL.
+            appHandler.sendEmptyMessage(SocketAWOL);
+        };
+
         // Open socket.
-        ((SocketManager)mConnection).open(host, port, (Throwable e) -> errorText.setText(e.getMessage()));
+        mConnection = new SocketManager(new MyResponseVisitor(appHandler), host, port, errCb, lostCb, (Socket sock) -> {
+            // If successful, send the login request.
+            mConnection.send(
+                    req,
+                    (Throwable e) -> {
+                        // If sending fails, display error and then kill socket.
+                        appHandler.sendMessage(Message.obtain(appHandler, DisplayError, e.getMessage()));
+                        try {
+                            mConnection.close();
+                            mConnection = null;
+                        } catch (Exception e2) { /* TODO: Am I supposed to do nothing here? */ }
+                    },
+                    (INetworkingConnection connection, @NonNull LoginRequest message) -> {
+                        // If sending succeeds, wait for ResponseThread to publish results.
+                        // Let Handler know to expect a login.
+                        appHandler.sendEmptyMessage(ExpectingLogin);
+                    });
+        });
 
         // Send login message; show error and close socket if failure happens. Otherwise transition to chat room.
-        mConnection.send(req, (Throwable e) -> {
-            errorText.setText(e.getMessage());
-            try {
-                mConnection.close();
-            } catch(Exception e2) {
-                errorText.setText(e2.getMessage());
-            }
-        }, (INetworkingConnection connection, @NonNull LoginRequest message)-> {
-            loggedIn = true;
-            showRoomFragment();
-        });
+
     }
 
     // ------ DO NOT MODIFY BELOW ------
