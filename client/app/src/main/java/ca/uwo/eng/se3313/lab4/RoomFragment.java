@@ -3,7 +3,8 @@ package ca.uwo.eng.se3313.lab4;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -11,24 +12,15 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 
-import com.google.common.base.Function;
-
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import ca.uwo.eng.se3313.lab4.network.response.LoginResponse;
-import ca.uwo.eng.se3313.lab4.network.response.MessageResponse;
 
 
 /**
@@ -49,6 +41,9 @@ public class RoomFragment extends Fragment {
     private OnInteractionListener mListener;
 
     // TODO SE3313 put your fields below:
+    private TextView enterText;
+    private ImageButton send;
+
 
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
@@ -61,7 +56,27 @@ public class RoomFragment extends Fragment {
         // e.g. sendButton = (ImageButton)view.findViewById(R.id.sendMsgButton);
         // mMessageTable is already intialized for you.
 
+        // Link the buttons
+        enterText = (TextView) view.findViewById(R.id.editMessage);
+        send = (ImageButton) view.findViewById(R.id.sendMsgButton);
+
+        // Add a send button listener, and send it to main loop.
+        send.setOnClickListener((View v) -> {
+            Handler appHandler = ((MainActivity)getContext()).getAppHandler();
+            appHandler.sendMessage(Message.obtain(appHandler, MainActivity.SendMessage, enterText.getText().toString()));
+        });
+
+        mListener.onRoomReady();
     }
+
+    public void createUserLoginWrapper(DateTime time, String username) {
+        createLoggedInElements(time, username);
+    }
+
+    public void createMessageWrapper(DateTime time, String username, String message) {
+        createUserMessageElements(time, username, message);
+    }
+
 
     @Override
     public void onAttach(Context context) {
@@ -80,7 +95,9 @@ public class RoomFragment extends Fragment {
         mListener = null;
         mMessageTable = null;
 
-        // TODO SE3313 Set all of your View references to null
+        enterText = null;
+        send = null;
+        // SE3313 Set all of your View references to null
 
     }
 
@@ -93,6 +110,7 @@ public class RoomFragment extends Fragment {
     public interface OnInteractionListener {
 
         // TODO SE3313 Add any interactions you expect the MainActivity to have
+        void onRoomReady();
     }
 
     // ------ DO NOT MODIFY BELOW THIS ------

@@ -1,6 +1,7 @@
 package ca.uwo.eng.se3313.lab4;
 
 import android.content.Context;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -11,8 +12,9 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.widget.TextView;
 import android.widget.Toast;
+
+import org.joda.time.DateTime;
 
 import java.net.Socket;
 
@@ -21,6 +23,7 @@ import ca.uwo.eng.se3313.lab4.network.darryl.MyResponseVisitor;
 import ca.uwo.eng.se3313.lab4.network.darryl.SocketConnect;
 import ca.uwo.eng.se3313.lab4.network.darryl.SocketManager;
 import ca.uwo.eng.se3313.lab4.network.request.LoginRequest;
+import ca.uwo.eng.se3313.lab4.network.request.MessageRequest;
 
 /**
  * The main application activity. This utilizes multiple fragments to run, {@link LoginFragment} and
@@ -55,13 +58,24 @@ public class MainActivity extends AppCompatActivity
     // Insert any state here:
     private Handler appHandler;
     private boolean loggedIn = false;   // Only true when logged in and socket is connected.
+    private String username = "";
+    private boolean roomReady = false;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public Handler getAppHandler() {
+        return appHandler;
+    };
 
     // Handler codes
     public static final int SocketAWOL      = 9999;
     public static final int DisplayMessage  = 10000;
-    public static final int DisplayLogin    = 10001;
-    public static final int DisplayError    = 10002;
-    public static final int ExpectingLogin  = 10003;
+    public static final int SendMessage     = 10001;
+    public static final int DisplayLogin    = 10002;
+    public static final int DisplayError    = 10003;
+    public static final int ExpectingLogin  = 10004;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -93,12 +107,21 @@ public class MainActivity extends AppCompatActivity
              */
             public void handleMessage(Message inputMessage) {
                 switch (inputMessage.what) {
+                    case SendMessage:
+                    {
+                        // Make message and send it, and display error if it can't be sent.
+                        MessageRequest msg = new MessageRequest(DateTime.now(), username, (String)inputMessage.obj);
+                        mConnection.send(msg, (Throwable e) -> appHandler.sendMessage(Message.obtain(appHandler, DisplayError, e.getMessage())));
+                        break;
+                    }
                     case ExpectingLogin:
                         expectingLogin = true;
                         break;
                     case SocketAWOL:
                         // Log user off, dismantle remaining socket infrastructure, and return to login.
                         loggedIn = false;
+                        roomReady = false;
+                        username = "";
                         expectingLogin = false;
 
                         // Change back to login fragment
@@ -113,42 +136,70 @@ public class MainActivity extends AppCompatActivity
                             // TODO: Find something better than ignoring this.
                         }
                         break;
-                    case DisplayError:
+                    case DisplayError: {
                         // Login went bad
-                        if (expectingLogin)
-                        {
-                            Context context = getApplicationContext();
-                            CharSequence text = (String) inputMessage.obj;
-                            int duration = Toast.LENGTH_SHORT;
-
-                            Toast toast = Toast.makeText(context, text, duration);
-                            toast.show();
+                        if (expectingLogin) {
                             expectingLogin = false;
-                        } else {
-                            Context context = getApplicationContext();
-                            CharSequence text = (String) inputMessage.obj;
-                            int duration = Toast.LENGTH_SHORT;
-
-                            Toast toast = Toast.makeText(context, text, duration);
-                            toast.show();
                         }
+
+                        // Display error
+                        Context context = getApplicationContext();
+                        CharSequence text = (String) inputMessage.obj;
+                        int duration = Toast.LENGTH_SHORT;
+
+                        Toast toast = Toast.makeText(context, text, duration);
+                        toast.show();
                         break;
-                    case DisplayLogin:
+                    }
+                    case DisplayLogin: {
                         // Login went well
                         if (expectingLogin) {
-                        loggedIn = true;
-                        showRoomFragment();
-                        } else {
-                            Context context = getApplicationContext();
-                            CharSequence text = (String) inputMessage.obj;
-                            int duration = Toast.LENGTH_SHORT;
+                            loggedIn = true;
+                            showRoomFragment();
+                        }
+                        Log.d("Login", "Hey, we got a login message!");
 
-                            Toast toast = Toast.makeText(context, text, duration);
-                            toast.show();
+                        if (roomReady) {
+                            // Show login
+                            mRoomFragment.createUserLoginWrapper((DateTime) ((Object[]) inputMessage.obj)[0], (String) ((Object[]) inputMessage.obj)[1]);
+                        } else {
+                            // Room not ready, stall!
+                            new AsyncTask<Void, Void, Void>() {
+                                @Override
+                                protected Void doInBackground(Void... params) {
+                                    try {
+                                        Thread.sleep(500);  // Sleep 500ms and then try again
+                                    } catch (InterruptedException e) {
+                                        // Ignore error
+                                    }
+                                    // Resend message.
+                                    appHandler.sendMessage(Message.obtain(appHandler, inputMessage.what, inputMessage.obj));
+                                    return null;
+                                }
+                            }.execute();
                         }
                         break;
+                    }
                     case DisplayMessage:
-                        // TODO: Display message
+                        if (roomReady) {
+                            // Display message
+                            mRoomFragment.createMessageWrapper((DateTime) ((Object[]) inputMessage.obj)[0], (String) ((Object[]) inputMessage.obj)[1], (String) ((Object[]) inputMessage.obj)[2]);
+                        } else {
+                            // Room not ready, stall!
+                            new AsyncTask<Void, Void, Void>() {
+                                @Override
+                                protected Void doInBackground(Void... params) {
+                                    try {
+                                        Thread.sleep(500);  // Sleep 500ms and then try again
+                                    } catch (InterruptedException e) {
+                                        // Ignore error
+                                    }
+                                    // Resend message.
+                                    appHandler.sendMessage(Message.obtain(appHandler, inputMessage.what, inputMessage.obj));
+                                    return null;
+                                }
+                            }.execute();
+                        }
                         break;
                 }
             }
@@ -184,6 +235,8 @@ public class MainActivity extends AppCompatActivity
                     },
                     (INetworkingConnection connection, @NonNull LoginRequest message) -> {
                         // If sending succeeds, wait for ResponseThread to publish results.
+                        username = req.getSender();
+
                         // Let Handler know to expect a login.
                         appHandler.sendEmptyMessage(ExpectingLogin);
                     });
@@ -191,6 +244,11 @@ public class MainActivity extends AppCompatActivity
 
         // Send login message; show error and close socket if failure happens. Otherwise transition to chat room.
 
+    }
+
+    @Override
+    public void onRoomReady() {
+        roomReady = true;
     }
 
     // ------ DO NOT MODIFY BELOW ------

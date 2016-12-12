@@ -34,7 +34,7 @@ public class MyResponseVisitor extends AbstractResponseVisitor {
      */
     @Override
     public void visitLogin(@NonNull LoginResponse login) {
-        appHandler.sendMessage(Message.obtain(appHandler, MainActivity.DisplayLogin, login.getJoiningUsername()));
+        appHandler.sendMessage(Message.obtain(appHandler, MainActivity.DisplayLogin, new Object[] {login.getDateTime(), login.getJoiningUsername()}));
     }
 
     /**
@@ -44,9 +44,7 @@ public class MyResponseVisitor extends AbstractResponseVisitor {
      */
     @Override
     public void visitMessage(@NonNull MessageResponse message) {
-        //Message.ob
-
-        //appHandler.sendMessage(Message.obtain(appHandler, MainActivity.DisplayMessage, message.getContent(), message.getOriginator(), message.getDateTime()));
+        appHandler.sendMessage(Message.obtain(appHandler, MainActivity.DisplayMessage, new Object[] {message.getDateTime(), message.getOriginator(), message.getContent()}));
     }
 
     /**
@@ -67,6 +65,6 @@ public class MyResponseVisitor extends AbstractResponseVisitor {
      */
     @Override
     public void error(@NonNull ErrorCode code, String message) {
-
+        Log.e("MyResponseVisitor_error", message + code.name());
     }
 }
