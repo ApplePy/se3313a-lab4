@@ -53,6 +53,9 @@ void server::stop()
 {
     killed = true;	// Signal end of program
     
+    // Lock socket vector before starting messing with it
+    std::lock_guard<std::mutex> lock(socketsLock);
+    
     // Close all sockets
     for (auto sock : sockets) {
       sock.first->close();
@@ -60,21 +63,16 @@ void server::stop()
     sockets.empty();
     server_socket->close();
     
-    //waiter->kill();	// Stop the listen loop
+    waiter->kill();	// Stop the listen loop
 }
 
 void server::listen()
 {
-  try
+  // Loop on waiting on all the sockets until killed
+  while(!killed)
   {
-    while(!killed)
-    {
-      int timeout = 1; // One second
-      waiter->wait(this->shared_from_this(), std::chrono::milliseconds(std::chrono::seconds(timeout)));
-    }
-  }
-  catch (std::runtime_error err)
-  {
+    int timeout = 1; // One second
+    waiter->wait(this->shared_from_this(), std::chrono::milliseconds(std::chrono::seconds(timeout)));
   }
 }
 
@@ -84,8 +82,10 @@ void server::onSTDIN(const std::string& line)
   std::cout << line << std::endl;
   
   // Ignore unless we're stopping
-  if (line == "exit")
+  if (line == "exit") {
+    std::cout << "Exiting..." << std::endl;
     stop();
+  }
 }
 
 void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket)
@@ -98,7 +98,10 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
   
   // If socket closed
   if(bytes_read == 0)
-  {    
+  {
+    // Lock socket vector before starting messing with it
+    std::lock_guard<std::mutex> lock(socketsLock);
+    
     // Find socket in client socket array that closed; remove it and break
     for (auto iter = sockets.begin(); iter != sockets.end(); iter++)
     {
@@ -146,6 +149,10 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
       {
 	std::string username = response->toJson().get<std::string>("object.joiningUsername");
 	
+	// Lock socket vector before starting messing with it
+	std::lock_guard<std::mutex> lock(socketsLock);
+	
+	// Find matching socket and associate the username
 	for(auto& cliSocket : sockets)
 	{
 	  if(socket->fd() == cliSocket.first->fd())
@@ -155,6 +162,8 @@ void server::onSocket(const se3313::networking::flex_waiter::socket_ptr_t socket
 	}
       }
       
+      // NOTE: Do not lock messageQueue and socketsLock simultaneously, or you may cause deadlock.
+      // Add to send queue
       std::lock_guard<std::mutex> lock(messageQueueLock);
       messageQueue.push_back(response);
     }
@@ -165,6 +174,9 @@ void server::onSocketServer(const std::shared_ptr<se3313::networking::socket_ser
 {
   // New client connection
   auto newClient = serverSocket->accept();
+  
+  // Lock socket vector before starting messing with it
+  std::lock_guard<std::mutex> lock(socketsLock);
   
   // Save new client
   sockets.push_back(std::pair<std::shared_ptr<net::socket>, std::string>(newClient, std::string()));
@@ -191,6 +203,9 @@ void server::sendMessages()
 	// Convert message to string
 	const std::string responseSerialized = se3313::msg::json::to(message->toJson());
 	
+	// Lock socket vector before starting messing with it
+	std::lock_guard<std::mutex> lock(socketsLock);
+	
 	// Write message to all sockets
 	for (auto socket: sockets)
 	{
@@ -210,6 +225,9 @@ server::return_t server::visitLogin(const msg::request::login& login/* request *
 {
   // Check to make sure username is not in use
   bool not_in_use = true;
+
+  // Lock socket vector before starting messing with it
+  socketsLock.lock();
   
   for (auto socket : sockets)
   {
@@ -219,6 +237,9 @@ server::return_t server::visitLogin(const msg::request::login& login/* request *
       break;
     }
   }
+  
+  // Done messing with sockets vector
+  socketsLock.unlock();
   
   // If username not in use, add it to the list and notify everyone
   if(not_in_use)

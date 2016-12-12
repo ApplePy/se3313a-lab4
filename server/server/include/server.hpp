@@ -59,6 +59,7 @@ private:
     
     std::vector<std::shared_ptr<se3313::msg::instance>> messageQueue;	// Holds the messages to be sent to all clients.
     std::mutex messageQueueLock;					// MessageQueue lock
+    std::mutex socketsLock;						// Lock the sockets vector
     
 public:
 
